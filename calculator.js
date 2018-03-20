@@ -18,6 +18,8 @@ function doOp(op) {
         return;
     }
  
+    console.log(op)
+
     if (op.toString().length==1 && ((op >= "0" && op <= "9") || op==".") ) {
         if (curNum.text.toString().length >= 14)
             return; // No arbitrary length numbers
@@ -31,9 +33,10 @@ function doOp(op) {
     }
     lastOp = op;
  
+ 
     // Pending operations
     if (currentOperation.text == "+") {
-        curNum.text = Number(curNum.text.valueOf()) + Number(curVal.valueOf());
+        curNum.text = Number(curNum.text.valueOf()) + Number(curVal);
     } else if (currentOperation.text == "-") {
         curNum.text = Number(curVal) - Number(curNum.text.valueOf());
     } else if (currentOperation.text == "x") {

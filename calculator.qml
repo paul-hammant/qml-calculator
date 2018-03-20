@@ -1,10 +1,15 @@
-import Qt 4.6
+import QtQuick 2.4
+import QtQuick.Layouts 1.1
+import QtQuick.Controls 1.3
  
  Rectangle {
-    width: parent.width; height: 480; color: palette.window
-    anchors.fill: parent;
-    SystemPalette { id: palette }
-    Script { source: "calculator.js" }
+    width: parent.width 
+    height: 480 
+    color: palette.window
+    anchors.fill: parent
+    SystemPalette { 
+        id: palette 
+    }
     Column {
         x: 2; spacing: 2;
         Row {
@@ -31,22 +36,24 @@ import Qt 4.6
                   anchors.left: container.left
                   anchors.leftMargin: 5
                   anchors.verticalCenter: container.verticalCenter
-              }
- 
+              } 
           }
-          CalcButton { operation: "Bksp"; id: bksp; opacity: 0 }
+          CalcButton { 
+              visible: advancedCheckBox.toggled == true
+              operation: "Bksp"; 
+              id: bksp; 
+          }
         }
         Item {
             height:460; width: 420;
- 
             Item {
                 id: basicButtons
-                x: 55; width: 460; height: 400
+                x: advancedCheckBox.toggled == true ? 0 : 55 
+                width: 460; height: 400
                 Row {
                     id: commonOperations
                     spacing: 0
-                    height:150
- 
+                    height: 150
                     CalcButton { 
                         operation: "Advanced"
                         id: advancedCheckBox
@@ -55,7 +62,6 @@ import Qt 4.6
                     }
                     CalcButton { operation: "C"; id: c; }
                     CalcButton { operation: "AC"; id: ac;}
- 
                 }
                 Grid {
                     id: numKeypad; y:60; spacing: 0; columns: 3
@@ -81,8 +87,10 @@ import Qt 4.6
                     CalcButton { operation: "+" }
                 }
             }
+            Grid {
+   	            visible: advancedCheckBox.toggled == true
                 id: advancedButtons
-                x: 250; spacing: 0; columns: 2; opacity: 0
+                x: 320; y: 0; spacing: 0; columns: 2
                 CalcButton { operation: "Abs" }
                 CalcButton { operation: "Int" }
                 CalcButton { operation: "MC" }
@@ -95,8 +103,9 @@ import Qt 4.6
                 CalcButton { operation: "+/-" }
             }
             Row {
+              visible: advancedCheckBox.toggled == true
               id: trigonometryOperations
-              spacing: 0;opacity: 0;y: 280;x:40
+              spacing: 0; y: 300; x:0
               CalcButton { operation: "Sin" }
               CalcButton { operation: "Cos" }
               CalcButton { operation: "Tan" }
@@ -107,18 +116,9 @@ import Qt 4.6
         }
     }
  
-    states: State {
-        name: "Advanced"; when: advancedCheckBox.toggled == true
-        PropertyChanges { target: basicButtons; x: 0 }
-        PropertyChanges { target: bksp; opacity: 1 }
-        PropertyChanges { target: commonOperations; x: 0;  }
-        PropertyChanges { target: advancedButtons; x: 320; opacity: 1 }
-        PropertyChanges { target: trigonometryOperations; x:0; y: 300; opacity: 1 }
- 
-    }
     transitions: Transition {
-        NumberAnimation { matchProperties: "x,y,width"; easing: "easeOutBounce"; duration: 500 }
-        NumberAnimation { matchProperties: "opacity"; easing: "easeInOutQuad"; duration: 500 }
+        NumberAnimation { property: "x,y,width"; easing.type: Easing.OutBounce; duration: 500 }
+        NumberAnimation { property: "opacity"; easing.type: Easing.InOutQuad; duration: 500 }
     }
- }    
-        
+ }
+
