@@ -6,7 +6,7 @@ import QtQuick.Controls 1.3
 var curVal = 0;
 var memory = 0;
 var lastOp = "";
-// var timer = 0; // timer seems unused, remove for cleanup
+var timer = 0; // timer seems unused, but will keep for now.
 var numpadModel = ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", ".", "="];
 
 function disabled(op) {
@@ -86,12 +86,12 @@ function doOp(op) {
     }
 
     // For any non-digit operation, first try to execute pending
-    // This check is now only relevant for actual arithmetic operators and equals,
-    // as other operations are handled directly.
-    if ((op === "+" || op === "-" || op === "x" || op === "/" || op === "x^y" || op === "=") && currentOperation.text !== "" && (lastOp >= "0" && lastOp <= "9" || lastOp === "." || lastOp === "MR")) {
+    // But not if the current op is C or AC or Bksp or memory ops
+    if (op !== "C" && op !== "AC" && op !== "Bksp" && op !== "MC" && op !== "MR" && op !== "MS" && op !== "M+" && op !== "+/-" && currentOperation.text !== "" && (lastOp >= "0" && lastOp <= "9" || lastOp === "." || lastOp === "MR")) {
       // Only execute if the last input was a number or memory recall
       if (!executePendingOperation()) return; // Stop if pending op resulted in error
     }
+
 
     switch (op) {
         // Pending Operations
@@ -104,7 +104,7 @@ function doOp(op) {
             currentOperation.text = op;
             break;
         case "=":
-            // executePendingOperation already called if needed (or if called above for relevant ops)
+            // executePendingOperation already called if needed
             if (currentOperation.text !== "") { // Ensure there was an operation
                  if (!executePendingOperation()) return; // Stop if error
             }
@@ -112,15 +112,80 @@ function doOp(op) {
             curVal = Number(curNum.text.valueOf()); // Store result in curVal for potential chained ops like 2+3= = =
             break;
 
-        // "Advanced" is a special case, it only affects lastOp for now, no direct calculation.
-        // It's not a calculation command button, more of a UI toggle trigger.
-        // Its toggle logic is handled by MyCalcButton component.
-        // doOp("Advanced") is still called if customClickHandler is false (default).
-        // If we wanted to make it fully custom, we could, but it's simple enough.
-        // No case needed here if its only effect is lastOp = op at the end.
+        // Immediate Operations
+        case "1/x":
+            curNum.text = (1 / Number(curNum.text.valueOf())).toString().slice(0,14);
+            break;
+        case "^2":
+            curNum.text = (Number(curNum.text.valueOf()) * Number(curNum.text.valueOf())).toString().slice(0,14);
+            break;
+        case "Abs":
+            curNum.text = (Math.abs(Number(curNum.text.valueOf()))).toString().slice(0,14);
+            break;
+        case "Sin":
+            curNum.text = (Math.sin(Number(curNum.text.valueOf()))).toString().slice(0,14);
+            break;
+        case "Cos":
+            curNum.text = (Math.cos(Number(curNum.text.valueOf()))).toString().slice(0,14);
+            break;
+        case "Tan":
+            curNum.text = (Math.tan(Number(curNum.text.valueOf()))).toString().slice(0,14);
+            break;
+        case "Log": // Assuming base 10 log, Math.log is natural log
+            curNum.text = (Math.log10(Number(curNum.text.valueOf()))).toString().slice(0,14);
+            break;
+        case "e^x":
+            curNum.text = (Math.exp(Number(curNum.text.valueOf()))).toString().slice(0,14);
+            break;
+        case "Int":
+            curNum.text = (Math.floor(Number(curNum.text.valueOf()))).toString().slice(0,14);
+            break;
+        case "+/-":
+            curNum.text = (Number(curNum.text.valueOf()) * -1).toString();
+            break;
+        case "Sqrt":
+            curNum.text = (Math.sqrt(Number(curNum.text.valueOf()))).toString().slice(0,14);
+            break;
+
+        // Memory Operations
+        case "MC":
+            memory = 0;
+            break;
+        case "M+":
+            memory += Number(curNum.text.valueOf());
+            break;
+        case "MR":
+            curNum.text = memory.toString().slice(0,14);
+            break;
+        case "MS":
+            memory = Number(curNum.text.valueOf());
+            break;
+
+        // Control Operations
+        case "Bksp":
+            if (curNum.text.toString() === "Error" || (lastOp !== "." && !(lastOp >= "0" && lastOp <= "9"))) {
+                // if error, or last op was not a number/decimal, C behavior
+                // curNum.text = "0"; // Let C handle this if that's the desired behavior
+            } else {
+                 curNum.text = curNum.text.toString().slice(0, -1);
+                 if (curNum.text.length === 0 || curNum.text === "-") {
+                    curNum.text = "0";
+                 }
+            }
+            break;
+        case "C": // Clear current entry
+            curNum.text = "0";
+            // currentOperation and curVal remain for multi-step calculation
+            break;
+        case "AC": // All Clear
+            curVal = 0;
+            memory = 0;
+            currentOperation.text = "";
+            curNum.text = "0";
+            break;
     }
-    lastOp = op; // Update lastOp for operations still handled by doOp (numbers, operators, equals, Advanced)
-    console.log("After Op (doOp): " + op + ", LastOp: " + lastOp + ", CurVal: " + curVal + ", CurNum: " + curNum.text + ", PendOp: " + currentOperation.text);
+    lastOp = op; // Update lastOp for all non-numeric operations too
+    console.log("After Op: " + op + ", LastOp: " + lastOp + ", CurVal: " + curVal + ", CurNum: " + curNum.text + ", PendOp: " + currentOperation.text);
 }
 </script>
 
@@ -129,7 +194,6 @@ component MyCalcButton {
         property alias operation: label.text
         property bool toggable: false
         property bool toggled: false
-        property bool customClickHandler: false // New property
         signal clicked
         id: calcButton
         width: 80
@@ -158,14 +222,10 @@ component MyCalcButton {
             id: clickRegion
             anchors.fill: parent
             onClicked: {
-                if (!customClickHandler) {
-                    doOp(operation); // Default action: call global doOp
-                }
-                calcButton.clicked(); // Always emit the clicked signal
-
-                if (calcButton.toggable) { // Handle internal toggle state if button is toggable
-                    calcButton.toggled = !calcButton.toggled;
-                }
+                doOp(operation); // This now calls the function in calculator.qml's script block
+                calcButton.clicked();
+                if (!calcButton.toggable) return;
+                calcButton.toggled ? calcButton.toggled = false : calcButton.toggled = true
             }
         }
         states: [
@@ -187,12 +247,12 @@ component MyCalcButton {
 }
 
  Rectangle {
-    width: parent.width 
-    height: 480 
+    width: parent.width
+    height: 480
     color: palette.window
     anchors.fill: parent
-    SystemPalette { 
-        id: palette 
+    SystemPalette {
+        id: palette
     }
     Column {
         x: 2; spacing: 2;
@@ -203,7 +263,7 @@ component MyCalcButton {
               id: container
               width: 400; height: 55
               border.color: palette.dark; color: palette.base
- 
+
               Text {
                   id: curNum
                   font.bold: true; font.pointSize: 22
@@ -212,7 +272,7 @@ component MyCalcButton {
                   anchors.rightMargin: 5
                   anchors.verticalCenter: container.verticalCenter
               }
- 
+
               Text {
                   id: currentOperation
                   color: palette.text
@@ -220,63 +280,32 @@ component MyCalcButton {
                   anchors.left: container.left
                   anchors.leftMargin: 5
                   anchors.verticalCenter: container.verticalCenter
-              } 
+              }
           }
           MyCalcButton {
               visible: advancedCheckBox.toggled == true
               operation: "Bksp";
               id: bksp;
-              customClickHandler: true
-              onClicked: {
-                  if (curNum.text.toString() === "Error" || (lastOp !== "." && !(lastOp >= "0" && lastOp <= "9"))) {
-                      // if error, or last op was not a number/decimal, C behavior might be desired
-                      // for now, only slice if it's a number
-                  } else {
-                       curNum.text = curNum.text.toString().slice(0, -1);
-                       if (curNum.text.length === 0 || curNum.text === "-") {
-                          curNum.text = "0";
-                       }
-                  }
-                  lastOp = "Bksp";
-              }
           }
         }
         Item {
             height:460; width: 420;
             Item {
                 id: basicButtons
-                x: advancedCheckBox.toggled == true ? 0 : 55 
+                x: advancedCheckBox.toggled == true ? 0 : 55
                 width: 460; height: 400
                 Row {
                     id: commonOperations
                     spacing: 0
                     height: 150
                     MyCalcButton {
-                        operation: "Advanced" // Stays default, doOp("Advanced") will set lastOp
+                        operation: "Advanced"
                         id: advancedCheckBox
                         width: 160
                         toggable: true
                     }
-                    MyCalcButton {
-                        operation: "C"; id: c;
-                        customClickHandler: true
-                        onClicked: {
-                            curNum.text = "0";
-                            // currentOperation and curVal remain for multi-step calculation
-                            lastOp = "C";
-                        }
-                    }
-                    MyCalcButton {
-                        operation: "AC"; id: ac;
-                        customClickHandler: true
-                        onClicked: {
-                            curVal = 0;
-                            memory = 0;
-                            currentOperation.text = "";
-                            curNum.text = "0";
-                            lastOp = "AC";
-                        }
-                    }
+                    MyCalcButton { operation: "C"; id: c; }
+                    MyCalcButton { operation: "AC"; id: ac;}
                 }
                 Grid {
                     id: numKeypad; y:60; spacing: 0; columns: 3
@@ -297,37 +326,36 @@ component MyCalcButton {
                 }
             }
             Grid {
-   	            visible: advancedCheckBox.toggled == true
+	            visible: advancedCheckBox.toggled == true
                 id: advancedButtons
                 x: 320; y: 0; spacing: 0; columns: 2
-                MyCalcButton { operation: "Abs"; customClickHandler: true; onClicked: { curNum.text = (Math.abs(Number(curNum.text.valueOf()))).toString().slice(0,14); lastOp = operation; } }
-                MyCalcButton { operation: "Int"; customClickHandler: true; onClicked: { curNum.text = (Math.floor(Number(curNum.text.valueOf()))).toString().slice(0,14); lastOp = operation; } }
-                MyCalcButton { operation: "MC"; customClickHandler: true; onClicked: { memory = 0; lastOp = operation; } }
-                MyCalcButton { operation: "Sqrt"; customClickHandler: true; onClicked: { if(disabled(operation)) return; curNum.text = (Math.sqrt(Number(curNum.text.valueOf()))).toString().slice(0,14); lastOp = operation; } }
-                MyCalcButton { operation: "MR"; customClickHandler: true; onClicked: { curNum.text = memory.toString().slice(0,14); lastOp = operation; } }
-                MyCalcButton { operation: "^2"; customClickHandler: true; onClicked: { curNum.text = (Number(curNum.text.valueOf()) * Number(curNum.text.valueOf())).toString().slice(0,14); lastOp = operation; } }
-                MyCalcButton { operation: "MS"; customClickHandler: true; onClicked: { memory = Number(curNum.text.valueOf()); lastOp = operation; } }
-                MyCalcButton { operation: "1/x"; customClickHandler: true; onClicked: { if(disabled(operation)) return; curNum.text = (1 / Number(curNum.text.valueOf())).toString().slice(0,14); lastOp = operation; } }
-                MyCalcButton { operation: "M+"; customClickHandler: true; onClicked: { memory += Number(curNum.text.valueOf()); lastOp = operation; } }
-                MyCalcButton { operation: "+/-"; customClickHandler: true; onClicked: { curNum.text = (Number(curNum.text.valueOf()) * -1).toString(); lastOp = operation; } }
+                MyCalcButton { operation: "Abs" }
+                MyCalcButton { operation: "Int" }
+                MyCalcButton { operation: "MC" }
+                MyCalcButton { operation: "Sqrt" }
+                MyCalcButton { operation: "MR" }
+                MyCalcButton { operation: "^2" }
+                MyCalcButton { operation: "MS" }
+                MyCalcButton { operation: "1/x" }
+                MyCalcButton { operation: "M+" }
+                MyCalcButton { operation: "+/-" }
             }
             Row {
               visible: advancedCheckBox.toggled == true
               id: trigonometryOperations
               spacing: 0; y: 300; x:0
-              MyCalcButton { operation: "Sin"; customClickHandler: true; onClicked: { curNum.text = (Math.sin(Number(curNum.text.valueOf()))).toString().slice(0,14); lastOp = operation; } }
-              MyCalcButton { operation: "Cos"; customClickHandler: true; onClicked: { curNum.text = (Math.cos(Number(curNum.text.valueOf()))).toString().slice(0,14); lastOp = operation; } }
-              MyCalcButton { operation: "Tan"; customClickHandler: true; onClicked: { curNum.text = (Math.tan(Number(curNum.text.valueOf()))).toString().slice(0,14); lastOp = operation; } }
-              MyCalcButton { operation: "Log"; customClickHandler: true; onClicked: { curNum.text = (Math.log10(Number(curNum.text.valueOf()))).toString().slice(0,14); lastOp = operation; } }
-              MyCalcButton { operation: "e^x"; customClickHandler: true; onClicked: { curNum.text = (Math.exp(Number(curNum.text.valueOf()))).toString().slice(0,14); lastOp = operation; } }
-              MyCalcButton { operation: "x^y"; } // This is a pending op, remains in doOp
+              MyCalcButton { operation: "Sin" }
+              MyCalcButton { operation: "Cos" }
+              MyCalcButton { operation: "Tan" }
+              MyCalcButton { operation: "Log" }
+              MyCalcButton { operation: "e^x" }
+              MyCalcButton { operation: "x^y" }
             }
         }
     }
- 
+
     transitions: Transition {
         NumberAnimation { property: "x,y,width"; easing.type: Easing.OutBounce; duration: 500 }
         NumberAnimation { property: "opacity"; easing.type: Easing.InOutQuad; duration: 500 }
     }
  }
-
