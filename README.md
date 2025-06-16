@@ -8,3 +8,5 @@ TODO:
 
 1. Upgrade to more recent QML / Qt.
 2. Make it work on Ubuntu Touch
+
+See also a modernization effort made by Google's JulesAgent that also attempts to get to single script: https://github.com/paul-hammant/qml-calculator/blob/feature/qml-calculator-modernization/calculator.qml
