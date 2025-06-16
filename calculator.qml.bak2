@@ -7,7 +7,6 @@ var curVal = 0;
 var memory = 0;
 var lastOp = "";
 var timer = 0; // timer seems unused, but will keep for now.
-var numpadModel = ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", ".", "="];
 
 function disabled(op) {
     if (op === "." && curNum.text.toString().includes(".")) {
@@ -247,12 +246,12 @@ component MyCalcButton {
 }
 
  Rectangle {
-    width: parent.width 
-    height: 480 
+    width: parent.width
+    height: 480
     color: palette.window
     anchors.fill: parent
-    SystemPalette { 
-        id: palette 
+    SystemPalette {
+        id: palette
     }
     Column {
         x: 2; spacing: 2;
@@ -263,7 +262,7 @@ component MyCalcButton {
               id: container
               width: 400; height: 55
               border.color: palette.dark; color: palette.base
- 
+
               Text {
                   id: curNum
                   font.bold: true; font.pointSize: 22
@@ -272,7 +271,7 @@ component MyCalcButton {
                   anchors.rightMargin: 5
                   anchors.verticalCenter: container.verticalCenter
               }
- 
+
               Text {
                   id: currentOperation
                   color: palette.text
@@ -280,19 +279,19 @@ component MyCalcButton {
                   anchors.left: container.left
                   anchors.leftMargin: 5
                   anchors.verticalCenter: container.verticalCenter
-              } 
+              }
           }
           MyCalcButton {
               visible: advancedCheckBox.toggled == true
-              operation: "Bksp"; 
-              id: bksp; 
+              operation: "Bksp";
+              id: bksp;
           }
         }
         Item {
             height:460; width: 420;
             Item {
                 id: basicButtons
-                x: advancedCheckBox.toggled == true ? 0 : 55 
+                x: advancedCheckBox.toggled == true ? 0 : 55
                 width: 460; height: 400
                 Row {
                     id: commonOperations
@@ -309,12 +308,18 @@ component MyCalcButton {
                 }
                 Grid {
                     id: numKeypad; y:60; spacing: 0; columns: 3
-                    Repeater {
-                        model: numpadModel
-                        delegate: MyCalcButton {
-                            operation: modelData
-                        }
-                    }
+                    MyCalcButton { operation: "7" }
+                    MyCalcButton { operation: "8" }
+                    MyCalcButton { operation: "9" }
+                    MyCalcButton { operation: "4" }
+                    MyCalcButton { operation: "5" }
+                    MyCalcButton { operation: "6" }
+                    MyCalcButton { operation: "1" }
+                    MyCalcButton { operation: "2" }
+                    MyCalcButton { operation: "3" }
+                    MyCalcButton { operation: "0" }
+                    MyCalcButton { operation: "." }
+                    MyCalcButton { operation: "=" }
                 }
                 Column {
                     id: simpleOperations
@@ -326,7 +331,7 @@ component MyCalcButton {
                 }
             }
             Grid {
-   	            visible: advancedCheckBox.toggled == true
+	            visible: advancedCheckBox.toggled == true
                 id: advancedButtons
                 x: 320; y: 0; spacing: 0; columns: 2
                 MyCalcButton { operation: "Abs" }
@@ -353,10 +358,9 @@ component MyCalcButton {
             }
         }
     }
- 
+
     transitions: Transition {
         NumberAnimation { property: "x,y,width"; easing.type: Easing.OutBounce; duration: 500 }
         NumberAnimation { property: "opacity"; easing.type: Easing.InOutQuad; duration: 500 }
     }
  }
-
